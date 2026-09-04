@@ -46,8 +46,8 @@ export function ShareButton({
     e.stopPropagation();
     const shareData = {
       title: article.title,
-      text: article.tag ?? article.title,
       url: article.url,
+      text: `${article.tag ?? article.title}\n\nThis news was brought to you by: itcantbe.vercel.app`,
     };
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
