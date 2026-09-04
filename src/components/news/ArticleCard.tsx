@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Heart, ThumbsDown } from "lucide-react";
 import placeholder from "@/assets/article-placeholder.jpg";
 import { cn } from "@/lib/utils";
-import { useReaction } from "@/hooks/use-reactions";
+import { useReaction, bumpStreak, resetStreak } from "@/hooks/use-reactions";
+import { ShareButton } from "@/components/news/ShareButton";
 import type { Article } from "@/lib/news.functions";
 
 function relativeTime(iso: string): string {
@@ -71,14 +72,19 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
   const fireBurst = useCallback(() => setBurst((n) => n + 1), []);
 
   const onLike = () => {
+    const wasLike = reaction === "like";
     like();
-    if (reaction !== "like") fireBurst();
+    if (!wasLike) {
+      fireBurst();
+      bumpStreak();
+    }
   };
 
   const onDislike = () => {
     dislike();
     setBurst(0);
     setNope((n) => n + 1);
+    resetStreak();
   };
 
   const onCardClick = (e: React.MouseEvent) => {
@@ -87,6 +93,7 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
       e.preventDefault();
       likeOnly();
       fireBurst();
+      bumpStreak();
       lastTap.current = 0;
       return;
     }
@@ -111,6 +118,7 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
           e.preventDefault();
           likeOnly();
           fireBurst();
+          bumpStreak();
         }}
         className="block focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
@@ -167,6 +175,7 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
         </time>
 
         <div className="ml-auto flex items-center gap-1.5">
+          <ShareButton article={article} />
           <button
             type="button"
             onClick={onLike}
