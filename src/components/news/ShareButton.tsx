@@ -47,7 +47,7 @@ export function ShareButton({
     const shareData = {
       title: article.title,
       url: article.url,
-      text: `${article.tag ?? article.title}\n\nThis news was brought to you by: itcantbe.vercel.app`,
+      text: `${article.tag ?? article.title}\n\nThis news was brought to you by: itcantbe.vercel.app\n\n`,
     };
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
