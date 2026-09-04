@@ -77,6 +77,7 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
 
   const onDislike = () => {
     dislike();
+    setBurst(0);
     setNope((n) => n + 1);
   };
 
@@ -124,7 +125,7 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
             draggable={false}
           />
-          {burst > 0 ? (
+          {burst > 0 && reaction === "like" ? (
             <div key={burst} className="pointer-events-none absolute inset-0 grid place-items-center">
               <Heart className="animate-heart-burst h-24 w-24 fill-accent text-accent drop-shadow-[0_6px_24px_var(--color-accent)]" />
               {CONFETTI.map((p, i) => (
