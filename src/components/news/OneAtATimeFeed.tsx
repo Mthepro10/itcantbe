@@ -3,7 +3,7 @@ import { ChevronUp, ChevronDown, Heart, ThumbsDown, Loader2 } from "lucide-react
 import placeholder from "@/assets/article-placeholder.jpg";
 import { cn } from "@/lib/utils";
 import { useReaction, bumpStreak, resetStreak } from "@/hooks/use-reactions";
-import { ShareButton } from "@/components/news/ShareButton";
+import { ShareButton } from "@/components/news/ShareButton.tsx";
 import { AdCard } from "@/components/news/AdCard";
 import { PredictionVote } from "@/components/game/PredictionVote";
 import { trackLike, trackRead } from "@/lib/gamification";
