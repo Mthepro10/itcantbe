@@ -9,6 +9,7 @@ import { OneAtATimeFeed } from "@/components/news/OneAtATimeFeed";
 import { FilterBar, type CategoryValue } from "@/components/news/FilterBar";
 import { SearchBar } from "@/components/news/SearchBar";
 import { StreakBadge } from "@/components/news/StreakBadge";
+import { LevelHud } from "@/components/game/LevelHud";
 import { getFilterOptions, listArticles, PAGE_SIZE } from "@/lib/news.functions";
 import { cn } from "@/lib/utils";
 
@@ -159,6 +160,9 @@ function Feed() {
     return (
       <div className="relative min-h-screen bg-black">
         <div className="absolute top-3 left-1/2 z-30 -translate-x-1/2">{ViewToggle}</div>
+        <div className="absolute top-3 left-3 z-30">
+          <LevelHud />
+        </div>
         <OneAtATimeFeed
           articles={articles}
           hasNextPage={hasNextPage}
@@ -183,7 +187,10 @@ function Feed() {
                 It<span className="text-accent">CantBe</span>
               </h1>
             </div>
-            {ViewToggle}
+            <div className="flex flex-wrap items-center gap-2">
+              <LevelHud />
+              {ViewToggle}
+            </div>
           </div>
           <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
             It can't be, but is <span className="text-foreground">IT!!??</span>

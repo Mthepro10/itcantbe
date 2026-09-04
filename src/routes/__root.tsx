@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { GameCelebrations } from "@/components/game/GameCelebrations";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -134,6 +135,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <GameCelebrations />
     </QueryClientProvider>
   );
 }

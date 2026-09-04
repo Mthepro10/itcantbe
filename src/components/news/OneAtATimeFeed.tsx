@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { useReaction, bumpStreak, resetStreak } from "@/hooks/use-reactions";
 import { ShareButton } from "@/components/news/ShareButton";
 import { AdCard } from "@/components/news/AdCard";
+import { PredictionVote } from "@/components/game/PredictionVote";
+import { trackLike, trackRead } from "@/lib/gamification";
 import type { Article } from "@/lib/news.functions";
 
 const AD_INTERVAL = 6;
@@ -58,6 +60,7 @@ function OneCard({ article, active }: { article: Article; active: boolean }) {
         href={article.url}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={() => trackRead()}
         className="relative z-10 flex flex-col gap-3 p-5 pr-20 pb-24 sm:pr-24 sm:pb-10"
       >
         <span
@@ -88,6 +91,12 @@ function OneCard({ article, active }: { article: Article; active: boolean }) {
         </div>
       </a>
 
+      {article.category === "rumor" ? (
+        <div className="relative z-10 -mt-16 px-5 pr-20 pb-24 sm:-mt-4 sm:pr-24 sm:pb-10">
+          <PredictionVote id={article.id} dark />
+        </div>
+      ) : null}
+
       <div className="absolute right-4 bottom-28 z-10 flex flex-col items-center gap-4 sm:bottom-10">
         <ShareButton article={article} dark />
         <button
@@ -96,7 +105,10 @@ function OneCard({ article, active }: { article: Article; active: boolean }) {
             e.preventDefault();
             const wasLike = reaction === "like";
             like();
-            if (!wasLike) bumpStreak();
+            if (!wasLike) {
+              bumpStreak();
+              trackLike();
+            }
           }}
           aria-label="Like"
           aria-pressed={reaction === "like"}
