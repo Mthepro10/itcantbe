@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { infiniteQueryOptions, queryOptions, useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -14,12 +14,15 @@ import { getFilterOptions, listArticles, PAGE_SIZE } from "@/lib/news.functions"
 import { cn } from "@/lib/utils";
 
 const CATEGORY_VALUES: CategoryValue[] = ["all", "confirmed", "rumor", "news"];
+type FeedMode = "overview" | "1atatime";
+const FEED_MODES: FeedMode[] = ["overview", "1atatime"];
 
 interface FeedSearch {
   league?: string | undefined;
   clubs?: string[] | undefined;
   category?: CategoryValue | undefined;
   q?: string | undefined;
+  mode?: FeedMode | undefined;
 }
 
 const filtersQuery = queryOptions({
@@ -57,11 +60,14 @@ export const Route = createFileRoute("/")({
       : undefined;
     const rawLeague = search["league"];
     const rawQ = search["q"];
+    const rawMode = search["mode"];
+    const mode = FEED_MODES.includes(rawMode as FeedMode) ? (rawMode as FeedMode) : undefined;
     return {
       league: typeof rawLeague === "string" && rawLeague ? rawLeague : undefined,
       clubs: clubs && clubs.length > 0 ? clubs : undefined,
       category,
       q: typeof rawQ === "string" && rawQ ? rawQ : undefined,
+      mode,
     };
   },
 
@@ -107,7 +113,13 @@ function Feed() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const router = useRouter();
-  const [view, setView] = useState<"overview" | "1atime">("overview");
+  const view = search.mode ?? "overview";
+  const setView = (next: FeedMode) =>
+    navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, mode: next === "overview" ? undefined : next }),
+      replace: true,
+    });
 
   const { data: options } = useSuspenseQuery(filtersQuery);
   const {
@@ -141,10 +153,10 @@ function Feed() {
         </button>
         <button
           type="button"
-          onClick={() => setView("1atime")}
+          onClick={() => setView("1atatime")}
           className={cn(
             "rounded-full px-4 py-1.5 text-xs font-bold tracking-wider uppercase transition-colors",
-            view === "1atime"
+            view === "1atatime"
               ? "bg-accent text-accent-foreground"
               : "text-muted-foreground hover:text-foreground",
           )}
@@ -152,11 +164,11 @@ function Feed() {
           1AtATime
         </button>
       </div>
-      <StreakBadge dark={view === "1atime"} />
+      <StreakBadge dark={view === "1atatime"} />
     </div>
   );
 
-  if (view === "1atime") {
+  if (view === "1atatime") {
     return (
       <div className="relative min-h-screen bg-black">
         <div className="absolute top-3 left-1/2 z-30 -translate-x-1/2">{ViewToggle}</div>
