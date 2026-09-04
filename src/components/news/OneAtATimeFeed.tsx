@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronUp, ChevronDown, Heart, ThumbsDown, Loader2 } from "lucide-react";
 import placeholder from "@/assets/article-placeholder.jpg";
 import { cn } from "@/lib/utils";
-import { useReaction } from "@/hooks/use-reactions";
+import { useReaction, bumpStreak, resetStreak } from "@/hooks/use-reactions";
+import { ShareButton } from "@/components/news/ShareButton";
 import { AdCard } from "@/components/news/AdCard";
 import type { Article } from "@/lib/news.functions";
 
@@ -88,11 +89,14 @@ function OneCard({ article, active }: { article: Article; active: boolean }) {
       </a>
 
       <div className="absolute right-4 bottom-28 z-10 flex flex-col items-center gap-4 sm:bottom-10">
+        <ShareButton article={article} dark />
         <button
           type="button"
           onClick={(e) => {
             e.preventDefault();
+            const wasLike = reaction === "like";
             like();
+            if (!wasLike) bumpStreak();
           }}
           aria-label="Like"
           aria-pressed={reaction === "like"}
@@ -110,6 +114,7 @@ function OneCard({ article, active }: { article: Article; active: boolean }) {
           onClick={(e) => {
             e.preventDefault();
             dislike();
+            resetStreak();
           }}
           aria-label="Dislike"
           aria-pressed={reaction === "dislike"}
