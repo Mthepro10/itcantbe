@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trackShare } from "@/lib/gamification";
 import type { Article } from "@/lib/news.functions";
 
 /** Mirrors the DB cleanup cron: rumors live 24h, everything else 12h. */
@@ -49,6 +50,7 @@ export function ShareButton({
       url: article.url,
       text: `${article.tag ?? article.title}\n\nThis news was brought to you by: itcantbe.vercel.app\n\n`,
     };
+    trackShare();
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share(shareData);

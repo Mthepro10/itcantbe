@@ -4,6 +4,8 @@ import placeholder from "@/assets/article-placeholder.jpg";
 import { cn } from "@/lib/utils";
 import { useReaction, bumpStreak, resetStreak } from "@/hooks/use-reactions";
 import { ShareButton } from "@/components/news/ShareButton";
+import { PredictionVote } from "@/components/game/PredictionVote";
+import { trackLike, trackRead } from "@/lib/gamification";
 import type { Article } from "@/lib/news.functions";
 
 function relativeTime(iso: string): string {
@@ -77,6 +79,7 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
     if (!wasLike) {
       fireBurst();
       bumpStreak();
+      trackLike();
     }
   };
 
@@ -94,10 +97,12 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
       likeOnly();
       fireBurst();
       bumpStreak();
+      trackLike();
       lastTap.current = 0;
       return;
     }
     lastTap.current = now;
+    trackRead();
   };
 
   return (
@@ -119,6 +124,7 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
           likeOnly();
           fireBurst();
           bumpStreak();
+          trackLike();
         }}
         className="block focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
@@ -163,6 +169,16 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
 
           {article.summary ? (
             <p className="line-clamp-2 text-sm text-muted-foreground">{article.summary}</p>
+          ) : null}
+
+          {article.category === "rumor" ? (
+            <div
+              className="mt-auto pt-1"
+              onClick={(e) => e.preventDefault()}
+              role="presentation"
+            >
+              <PredictionVote id={article.id} />
+            </div>
           ) : null}
         </div>
       </a>
