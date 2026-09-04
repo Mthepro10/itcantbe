@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trophy, Volume2, VolumeX, Zap, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCombo, useGame, useLevel } from "@/hooks/use-gamification";
@@ -16,6 +16,13 @@ export function LevelHud() {
   const combo = useCombo();
   const [open, setOpen] = useState(false);
   const [sound, setSound] = useState(state.sound);
+  // Gate localStorage-driven UI until after mount so SSR and the first
+  // client render produce identical markup (avoids hydration mismatch).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    setSound(state.sound);
+  }, [state.sound]);
 
   const ring = `conic-gradient(var(--color-accent) ${level.pct * 3.6}deg, var(--color-border) 0deg)`;
 
@@ -54,7 +61,7 @@ export function LevelHud() {
       </button>
 
       {/* Daily streak */}
-      {state.dailyStreak >= 1 ? (
+      {mounted && state.dailyStreak >= 1 ? (
         <span
           title={`${state.dailyStreak}-day visit streak`}
           className="inline-flex items-center gap-0.5 rounded-full bg-accent/10 px-2 py-1 text-xs font-bold text-accent tabular-nums"
