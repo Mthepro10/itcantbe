@@ -52,3 +52,62 @@ export function useReaction(id: string) {
 
   return { reaction, like, likeOnly, dislike };
 }
+
+// ---------------------------------------------------------------------------
+
+const STREAK_KEY = "itcantbe:streak";
+const STREAK_EVENT = "itcantbe:streak-change";
+
+export interface StreakState {
+  current: number;
+  best: number;
+}
+
+function readStreak(): StreakState {
+  if (typeof window === "undefined") return { current: 0, best: 0 };
+  try {
+    const raw = window.localStorage.getItem(STREAK_KEY);
+    return raw ? (JSON.parse(raw) as StreakState) : { current: 0, best: 0 };
+  } catch {
+    return { current: 0, best: 0 };
+  }
+}
+
+function writeStreak(next: StreakState) {
+  try {
+    window.localStorage.setItem(STREAK_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<StreakState>(STREAK_EVENT, { detail: next }));
+  }
+}
+
+export function bumpStreak(): StreakState {
+  const s = readStreak();
+  const next = { current: s.current + 1, best: Math.max(s.best, s.current + 1) };
+  writeStreak(next);
+  return next;
+}
+
+export function resetStreak(): StreakState {
+  const s = readStreak();
+  if (s.current === 0) return s;
+  const next = { current: 0, best: s.best };
+  writeStreak(next);
+  return next;
+}
+
+export function useLikeStreak(): StreakState {
+  const [state, setState] = useState<StreakState>(() => readStreak());
+
+  useEffect(() => {
+    setState(readStreak());
+    const onChange = (e: Event) => setState((e as CustomEvent<StreakState>).detail);
+    window.addEventListener(STREAK_EVENT, onChange);
+    return () => window.removeEventListener(STREAK_EVENT, onChange);
+  }, []);
+
+  return state;
+}
