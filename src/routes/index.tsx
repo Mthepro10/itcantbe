@@ -1,12 +1,14 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { infiniteQueryOptions, queryOptions, useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ArticleCard } from "@/components/news/ArticleCard";
 import { AdCard } from "@/components/news/AdCard";
+import { OneAtATimeFeed } from "@/components/news/OneAtATimeFeed";
 import { FilterBar, type CategoryValue } from "@/components/news/FilterBar";
 import { getFilterOptions, listArticles, PAGE_SIZE } from "@/lib/news.functions";
+import { cn } from "@/lib/utils";
 
 const CATEGORY_VALUES: CategoryValue[] = ["all", "confirmed", "rumor", "news"];
 
@@ -98,6 +100,7 @@ function Feed() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const router = useRouter();
+  const [view, setView] = useState<"overview" | "1atime">("overview");
 
   const { data: options } = useSuspenseQuery(filtersQuery);
   const {
@@ -114,18 +117,64 @@ function Feed() {
   const setSearch = (next: Partial<FeedSearch>) =>
     navigate({ to: ".", search: (prev) => ({ ...prev, ...next }) });
 
+  const ViewToggle = (
+    <div className="inline-flex rounded-full border border-border bg-card p-1">
+      <button
+        type="button"
+        onClick={() => setView("overview")}
+        className={cn(
+          "rounded-full px-4 py-1.5 text-xs font-bold tracking-wider uppercase transition-colors",
+          view === "overview"
+            ? "bg-accent text-accent-foreground"
+            : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        Overview
+      </button>
+      <button
+        type="button"
+        onClick={() => setView("1atime")}
+        className={cn(
+          "rounded-full px-4 py-1.5 text-xs font-bold tracking-wider uppercase transition-colors",
+          view === "1atime"
+            ? "bg-accent text-accent-foreground"
+            : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        1AtATime
+      </button>
+    </div>
+  );
+
+  if (view === "1atime") {
+    return (
+      <div className="relative min-h-screen bg-black">
+        <div className="absolute top-3 left-1/2 z-30 -translate-x-1/2">{ViewToggle}</div>
+        <OneAtATimeFeed
+          articles={articles}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onLoadMore={fetchNextPage}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-8 sm:py-10">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-sm bg-accent px-2 py-1 font-display text-xs tracking-[0.2em] text-accent-foreground uppercase">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-accent-foreground" />
-              Live
-            </span>
-            <h1 className="font-display text-3xl leading-none tracking-tight uppercase sm:text-5xl">
-              It<span className="text-accent">CantBe</span>
-            </h1>
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 sm:py-10">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-2 rounded-sm bg-accent px-2 py-1 font-display text-xs tracking-[0.2em] text-accent-foreground uppercase">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-accent-foreground" />
+                Live
+              </span>
+              <h1 className="font-display text-3xl leading-none tracking-tight uppercase sm:text-5xl">
+                It<span className="text-accent">CantBe</span>
+              </h1>
+            </div>
+            {ViewToggle}
           </div>
           <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
             It can't be, but is <span className="text-foreground">IT!!??</span>
