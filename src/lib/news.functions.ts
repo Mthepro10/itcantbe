@@ -76,10 +76,16 @@ const articleFilters = z.object({
   leagueId: z.string().nullable().optional(),
   clubIds: z.array(z.string()).optional(),
   category: z.enum(["all", "confirmed", "rumor", "news"]).optional(),
+  q: z.string().max(80).optional(),
   page: z.number().int().min(0).max(500).optional(),
 });
 
 export type ArticleFilters = z.infer<typeof articleFilters>;
+
+/** Strips characters that would break PostgREST's or()/ilike filter syntax. */
+function sanitizeSearchTerm(q: string): string {
+  return q.replace(/[,()%*]/g, " ").trim().slice(0, 80);
+}
 
 export const listArticles = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => articleFilters.parse(input ?? {}))
@@ -106,6 +112,10 @@ export const listArticles = createServerFn({ method: "GET" })
     }
     if (data.category && data.category !== "all") {
       query = query.eq("category", data.category);
+    }
+    const term = data.q ? sanitizeSearchTerm(data.q) : "";
+    if (term) {
+      query = query.or(`title.ilike.%${term}%,summary.ilike.%${term}%`);
     }
 
     const { data: rows, error } = await query.returns<Article[]>();
