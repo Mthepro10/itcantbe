@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://itcantbe.lovable.app/sitemap.xml
+Sitemap: https://itcantbe.vercel.app/sitemap.xml
