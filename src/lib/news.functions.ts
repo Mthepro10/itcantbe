@@ -4,6 +4,11 @@ import { z } from "zod";
 
 export const PAGE_SIZE = 20;
 
+export interface ArticleSource {
+  name: string;
+  url: string;
+}
+
 export interface Article {
   id: string;
   title: string;
@@ -16,6 +21,9 @@ export interface Article {
   club_ids: string[] | null;
   category: string | null;
   tag: string | null;
+  yes_count?: number;
+  no_count?: number;
+  sources?: ArticleSource[] | null;
 }
 
 export interface League {
@@ -100,7 +108,7 @@ export const listArticles = createServerFn({ method: "GET" })
       .from("articles")
       .select(
         sel(
-          "id, title, summary, url, image_url, source_name, published_at, league_id, club_ids, category, tag",
+          "id, title, summary, url, image_url, source_name, published_at, league_id, club_ids, category, tag, sources",
         ),
       )
       .order("published_at", { ascending: false })
@@ -125,12 +133,94 @@ export const listArticles = createServerFn({ method: "GET" })
     }
 
     const list = rows ?? [];
-    return {
-      articles: list.slice(0, PAGE_SIZE),
-      hasMore: list.length > PAGE_SIZE,
-      error: null,
-    };
+    const pageArticles = list.slice(0, PAGE_SIZE);
+    const hasMore = list.length > PAGE_SIZE;
+
+    // Attach real (anonymous, aggregate) vote counts for rumor cards.
+    const rumorIds = pageArticles.filter((a) => a.category === "rumor").map((a) => a.id);
+    if (rumorIds.length > 0) {
+      const { data: voteRows } = await supabase
+        .from("article_votes")
+        .select("article_id, yes_count, no_count")
+        .in("article_id", rumorIds);
+      const voteMap = new Map(
+        (voteRows ?? []).map((v) => [v.article_id as string, v as { yes_count: number; no_count: number }]),
+      );
+      for (const a of pageArticles) {
+        const v = voteMap.get(a.id);
+        if (v) {
+          a.yes_count = v.yes_count;
+          a.no_count = v.no_count;
+        }
+      }
+    }
+
+    return { articles: pageArticles, hasMore, error: null };
   });
+
+const voteInput = z.object({
+  articleId: z.string(),
+  choice: z.enum(["yes", "no"]),
+});
+
+export const castVote = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => voteInput.parse(input))
+  .handler(async ({ data }): Promise<{ yesCount: number; noCount: number; error: string | null }> => {
+    const supabase = getReadClient();
+    if (!supabase) return { yesCount: 0, noCount: 0, error: MISSING_CONFIG };
+
+    const { data: rows, error } = await supabase.rpc("cast_vote", {
+      p_article_id: data.articleId,
+      p_choice: data.choice,
+    });
+
+    if (error || !rows || rows.length === 0) {
+      console.error("castVote failed", error?.message);
+      return { yesCount: 0, noCount: 0, error: "Couldn't record your vote right now." };
+    }
+
+    const row = rows[0] as { yes_count: number; no_count: number };
+    return { yesCount: row.yes_count, noCount: row.no_count, error: null };
+  });
+
+export interface CommunityPulse {
+  totalVotes: number;
+  hottest: { title: string; tag: string | null; yesCount: number; noCount: number } | null;
+  error: string | null;
+}
+
+export const getCommunityPulse = createServerFn({ method: "GET" }).handler(
+  async (): Promise<CommunityPulse> => {
+    const supabase = getReadClient();
+    if (!supabase) return { totalVotes: 0, hottest: null, error: MISSING_CONFIG };
+
+    const { data: rows, error } = await supabase
+      .from("article_votes")
+      .select("article_id, yes_count, no_count, articles(title, tag)");
+
+    if (error) {
+      console.error("getCommunityPulse failed", error.message);
+      return { totalVotes: 0, hottest: null, error: "Couldn't load community stats." };
+    }
+
+    type Row = { yes_count: number; no_count: number; articles: { title: string; tag: string | null } | null };
+    const list = (rows ?? []) as unknown as Row[];
+
+    const totalVotes = list.reduce((sum, r) => sum + (r.yes_count ?? 0) + (r.no_count ?? 0), 0);
+
+    let hottest: CommunityPulse["hottest"] = null;
+    let max = -1;
+    for (const r of list) {
+      const total = (r.yes_count ?? 0) + (r.no_count ?? 0);
+      if (total > max && r.articles) {
+        max = total;
+        hottest = { title: r.articles.title, tag: r.articles.tag, yesCount: r.yes_count, noCount: r.no_count };
+      }
+    }
+
+    return { totalVotes, hottest, error: null };
+  },
+);
 
 export const getFilterOptions = createServerFn({ method: "GET" }).handler(
   async (): Promise<FilterOptions> => {
