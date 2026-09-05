@@ -1,36 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { trackShare } from "@/lib/gamification";
 import type { Article } from "@/lib/news.functions";
-
-/** Mirrors the DB cleanup cron: rumors live 24h, everything else 12h. */
-function expiryHours(category: string | null): number {
-  return category === "rumor" ? 24 : 12;
-}
-
-function useCountdown(publishedAt: string, hours: number) {
-  const [label, setLabel] = useState("");
-
-  useEffect(() => {
-    const expiry = new Date(publishedAt).getTime() + hours * 3_600_000;
-    const tick = () => {
-      const diff = expiry - Date.now();
-      if (diff <= 0) {
-        setLabel("expiring");
-        return;
-      }
-      const h = Math.floor(diff / 3_600_000);
-      const m = Math.floor((diff % 3_600_000) / 60_000);
-      setLabel(h > 0 ? `${h}h ${m}m left` : `${m}m left`);
-    };
-    tick();
-    const id = setInterval(tick, 30_000);
-    return () => clearInterval(id);
-  }, [publishedAt, hours]);
-
-  return label;
-}
 
 export function ShareButton({
   article,
@@ -40,7 +11,6 @@ export function ShareButton({
   dark?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
-  const countdown = useCountdown(article.published_at, expiryHours(article.category));
 
   const onShare = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -50,7 +20,6 @@ export function ShareButton({
       url: article.url,
       text: `${article.tag ?? article.title}\n\nThis news was brought to you by: itcantbe.vercel.app\n\n`,
     };
-    trackShare();
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share(shareData);
@@ -83,14 +52,16 @@ export function ShareButton({
       >
         <Share2 className="h-4 w-4" />
       </button>
-      <span
-        className={cn(
-          "text-[0.6rem] font-bold tracking-wide uppercase",
-          countdown === "expiring" ? "text-accent" : dark ? "text-white/60" : "text-muted-foreground",
-        )}
-      >
-        {copied ? "Copied!" : countdown}
-      </span>
+      {copied ? (
+        <span
+          className={cn(
+            "text-[0.6rem] font-bold tracking-wide uppercase",
+            dark ? "text-white/60" : "text-muted-foreground",
+          )}
+        >
+          Copied!
+        </span>
+      ) : null}
     </div>
   );
 }
