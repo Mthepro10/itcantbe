@@ -133,6 +133,11 @@ function Feed() {
 
   const articles = data.pages.flatMap((p) => p.articles);
   const feedError = data.pages[0]?.error ?? options.error;
+  const clubColors = new Map(
+    options.clubs
+      .filter((c) => c.color_primary)
+      .map((c) => [c.id, { primary: c.color_primary!, secondary: c.color_secondary ?? c.color_primary! }]),
+  );
 
   const setSearch = (next: Partial<FeedSearch>) =>
     navigate({ to: ".", search: (prev) => ({ ...prev, ...next }) });
@@ -181,6 +186,7 @@ function Feed() {
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
           onLoadMore={fetchNextPage}
+          clubColors={clubColors}
         />
       </div>
     );
@@ -261,7 +267,7 @@ function Feed() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {articles.map((article, i) => (
             <Fragment key={article.id}>
-              <ArticleCard article={article} priority={i < 3} />
+              <ArticleCard article={article} priority={i < 3} clubColors={clubColors} />
               {(i + 1) % 4 === 0 ? <AdCard slot={(i + 1) / 4} /> : null}
             </Fragment>
           ))}
