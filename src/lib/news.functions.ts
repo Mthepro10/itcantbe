@@ -39,6 +39,8 @@ export interface Club {
   name: string;
   league_id: string | null;
   country: string | null;
+  color_primary: string | null;
+  color_secondary: string | null;
 }
 
 export interface ArticlePage {
@@ -235,7 +237,7 @@ export const getFilterOptions = createServerFn({ method: "GET" }).handler(
         .returns<League[]>(),
       supabase
         .from("clubs")
-        .select(sel("id, name, league_id, country"))
+        .select(sel("id, name, league_id, country, color_primary, color_secondary"))
         .order("name")
         .returns<Club[]>(),
     ]);
