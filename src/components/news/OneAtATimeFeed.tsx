@@ -50,7 +50,15 @@ function relativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
-function OneCard({ article, active }: { article: Article; active: boolean }) {
+function OneCard({
+  article,
+  active,
+  clubColors,
+}: {
+  article: Article;
+  active: boolean;
+  clubColors?: Map<string, { primary: string; secondary: string }>;
+}) {
   const [broken, setBroken] = useState(false);
   const src = !broken && article.image_url ? article.image_url : placeholder;
   const { reaction, like, dislike } = useReaction(article.id);
@@ -62,8 +70,28 @@ function OneCard({ article, active }: { article: Article; active: boolean }) {
       : [{ name: article.source_name ?? "Source", url: article.url }];
   const hasMultipleSources = sources.length > 1;
 
+  const clubStripe = [
+    ...new Map(
+      (article.club_ids ?? [])
+        .map((id) => clubColors?.get(id))
+        .filter((c): c is { primary: string; secondary: string } => Boolean(c))
+        .map((c) => [`${c.primary}|${c.secondary}`, c]),
+    ).values(),
+  ];
+
   return (
     <div className="relative flex h-full w-full flex-col justify-end overflow-hidden bg-black">
+      {clubStripe.length > 0 ? (
+        <div className="absolute inset-x-0 top-0 z-20 flex h-2">
+          {clubStripe.map((c, i) => (
+            <span
+              key={i}
+              className="flex-1"
+              style={{ background: `linear-gradient(160deg, ${c.primary} 50%, ${c.secondary} 50%)` }}
+            />
+          ))}
+        </div>
+      ) : null}
       <img
         src={src}
         alt={article.title}
@@ -187,11 +215,13 @@ export function OneAtATimeFeed({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
+  clubColors,
 }: {
   articles: Article[];
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   onLoadMore?: () => void;
+  clubColors?: Map<string, { primary: string; secondary: string }>;
 }) {
   const items = buildItems(articles);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -261,7 +291,7 @@ export function OneAtATimeFeed({
         {items.map((item) =>
           item.type === "article" ? (
             <div key={item.article.id} className="h-[100dvh] w-full snap-start">
-              <OneCard article={item.article} active />
+              <OneCard article={item.article} active clubColors={clubColors} />
             </div>
           ) : item.type === "breather" ? (
             <div
