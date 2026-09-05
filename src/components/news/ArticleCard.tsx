@@ -4,6 +4,7 @@ import placeholder from "@/assets/article-placeholder.jpg";
 import { cn } from "@/lib/utils";
 import { useReaction, bumpStreak, resetStreak } from "@/hooks/use-reactions";
 import { ShareButton } from "@/components/news/ShareButton";
+import { SourcePickerDialog } from "@/components/news/SourcePickerDialog";
 import { PredictionVote } from "@/components/game/PredictionVote";
 import { trackLike, trackRead } from "@/lib/gamification";
 import type { Article } from "@/lib/news.functions";
@@ -70,6 +71,13 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
   const lastTap = useRef(0);
   const src = !broken && article.image_url ? article.image_url : placeholder;
   const { reaction, like, likeOnly, dislike } = useReaction(article.id);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const sources =
+    article.sources && article.sources.length > 0
+      ? article.sources
+      : [{ name: article.source_name ?? "Source", url: article.url }];
+  const hasMultipleSources = sources.length > 1;
 
   const fireBurst = useCallback(() => setBurst((n) => n + 1), []);
 
@@ -103,6 +111,10 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
     }
     lastTap.current = now;
     trackRead();
+    if (hasMultipleSources) {
+      e.preventDefault();
+      setPickerOpen(true);
+    }
   };
 
   return (
@@ -177,7 +189,7 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
               onClick={(e) => e.preventDefault()}
               role="presentation"
             >
-              <PredictionVote id={article.id} />
+              <PredictionVote id={article.id} yesCount={article.yes_count} noCount={article.no_count} />
             </div>
           ) : null}
         </div>
@@ -189,6 +201,11 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
         <time dateTime={article.published_at}>
           <RelativeTime iso={article.published_at} />
         </time>
+        {hasMultipleSources ? (
+          <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[0.6rem] font-bold text-accent normal-case">
+            +{sources.length - 1} more sources
+          </span>
+        ) : null}
 
         <div className="ml-auto flex items-center gap-1.5">
           <ShareButton article={article} />
@@ -229,6 +246,13 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
           </button>
         </div>
       </div>
+
+      <SourcePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        title={article.title}
+        sources={sources}
+      />
     </article>
   );
 }
