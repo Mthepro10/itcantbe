@@ -64,7 +64,15 @@ const CONFETTI = [
   { x: 0, y: 85, c: "var(--color-confirmed)" },
 ];
 
-export function ArticleCard({ article, priority = false }: { article: Article; priority?: boolean }) {
+export function ArticleCard({
+  article,
+  priority = false,
+  clubColors,
+}: {
+  article: Article;
+  priority?: boolean;
+  clubColors?: Map<string, { primary: string; secondary: string }>;
+}) {
   const [broken, setBroken] = useState(false);
   const [burst, setBurst] = useState(0);
   const [nope, setNope] = useState(0);
@@ -78,6 +86,15 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
       ? article.sources
       : [{ name: article.source_name ?? "Source", url: article.url }];
   const hasMultipleSources = sources.length > 1;
+
+  const clubStripe = [
+    ...new Map(
+      (article.club_ids ?? [])
+        .map((id) => clubColors?.get(id))
+        .filter((c): c is { primary: string; secondary: string } => Boolean(c))
+        .map((c) => [`${c.primary}|${c.secondary}`, c]),
+    ).values(),
+  ];
 
   const fireBurst = useCallback(() => setBurst((n) => n + 1), []);
 
@@ -126,6 +143,17 @@ export function ArticleCard({ article, priority = false }: { article: Article; p
         nope % 2 === 1 && "animate-nope",
       )}
     >
+      {clubStripe.length > 0 ? (
+        <div className="absolute inset-y-0 left-0 z-20 flex w-2 flex-col overflow-hidden rounded-l-2xl">
+          {clubStripe.map((c, i) => (
+            <span
+              key={i}
+              className="flex-1"
+              style={{ background: `linear-gradient(160deg, ${c.primary} 50%, ${c.secondary} 50%)` }}
+            />
+          ))}
+        </div>
+      ) : null}
       <a
         href={article.url}
         target="_blank"
