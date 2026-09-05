@@ -251,3 +251,54 @@ export const getFilterOptions = createServerFn({ method: "GET" }).handler(
     return { leagues: leaguesRes.data ?? [], clubs: clubsRes.data ?? [], error: null };
   },
 );
+
+export interface TrendingClub {
+  id: string;
+  name: string;
+  count: number;
+}
+
+export const getTrendingClubs = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ clubs: TrendingClub[]; error: string | null }> => {
+    const supabase = getReadClient();
+    if (!supabase) return { clubs: [], error: MISSING_CONFIG };
+
+    const cutoff = new Date(Date.now() - 6 * 3600_000).toISOString();
+    const { data: rows, error } = await supabase
+      .from("articles")
+      .select("club_ids")
+      .gte("published_at", cutoff)
+      .not("club_ids", "is", null)
+      .limit(300);
+
+    if (error) {
+      console.error("getTrendingClubs failed", error.message);
+      return { clubs: [], error: "Couldn't load trending clubs." };
+    }
+
+    const tally = new Map<string, number>();
+    for (const row of rows ?? []) {
+      for (const id of (row.club_ids as string[]) ?? []) {
+        tally.set(id, (tally.get(id) ?? 0) + 1);
+      }
+    }
+
+    const topIds = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+    if (topIds.length === 0) return { clubs: [], error: null };
+
+    const { data: clubRows } = await supabase
+      .from("clubs")
+      .select("id, name")
+      .in(
+        "id",
+        topIds.map(([id]) => id),
+      );
+
+    const nameMap = new Map((clubRows ?? []).map((c) => [c.id as string, c.name as string]));
+    const clubs = topIds
+      .map(([id, count]) => ({ id, name: nameMap.get(id) ?? "Unknown", count }))
+      .filter((c) => c.name !== "Unknown");
+
+    return { clubs, error: null };
+  },
+);
