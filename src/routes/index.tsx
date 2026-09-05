@@ -9,6 +9,7 @@ import { OneAtATimeFeed } from "@/components/news/OneAtATimeFeed";
 import { FilterBar, type CategoryValue } from "@/components/news/FilterBar";
 import { SearchBar } from "@/components/news/SearchBar";
 import { StreakBadge } from "@/components/news/StreakBadge";
+import { TrendingTicker } from "@/components/news/TrendingTicker";
 import { LevelHud } from "@/components/game/LevelHud";
 import { getFilterOptions, listArticles, PAGE_SIZE } from "@/lib/news.functions";
 import { cn } from "@/lib/utils";
@@ -187,6 +188,7 @@ function Feed() {
 
   return (
     <div className="min-h-screen bg-background">
+      <TrendingTicker />
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 sm:py-10">
           <div className="flex flex-wrap items-center justify-between gap-3">
