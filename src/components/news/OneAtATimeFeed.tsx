@@ -1,26 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronUp, ChevronDown, Heart, ThumbsDown, Loader2 } from "lucide-react";
+import { ChevronUp, ChevronDown, Coffee, Heart, ThumbsDown, Loader2 } from "lucide-react";
 import placeholder from "@/assets/article-placeholder.jpg";
 import { cn } from "@/lib/utils";
 import { useReaction, bumpStreak, resetStreak } from "@/hooks/use-reactions";
-import { ShareButton } from "@/components/news/ShareButton.tsx";
+import { ShareButton } from "@/components/news/ShareButton";
 import { AdCard } from "@/components/news/AdCard";
 import { PredictionVote } from "@/components/game/PredictionVote";
 import { trackLike, trackRead } from "@/lib/gamification";
 import type { Article } from "@/lib/news.functions";
 
 const AD_INTERVAL = 6;
+const BREATHER_INTERVAL = 15;
 
-type FeedItem = { type: "article"; article: Article } | { type: "ad"; slot: number };
+type FeedItem =
+  | { type: "article"; article: Article }
+  | { type: "ad"; slot: number }
+  | { type: "breather"; count: number };
 
 function buildItems(articles: Article[]): FeedItem[] {
   const items: FeedItem[] = [];
   let adSlot = 0;
+  let sinceBreather = 0;
   articles.forEach((article, i) => {
     items.push({ type: "article", article });
+    sinceBreather += 1;
     if ((i + 1) % AD_INTERVAL === 0) {
       adSlot += 1;
       items.push({ type: "ad", slot: adSlot });
+    }
+    if (sinceBreather >= BREATHER_INTERVAL) {
+      items.push({ type: "breather", count: i + 1 });
+      sinceBreather = 0;
     }
   });
   return items;
@@ -93,7 +103,7 @@ function OneCard({ article, active }: { article: Article; active: boolean }) {
 
       {article.category === "rumor" ? (
         <div className="relative z-10 -mt-16 px-5 pr-20 pb-24 sm:-mt-4 sm:pr-24 sm:pb-10">
-          <PredictionVote id={article.id} dark />
+          <PredictionVote id={article.id} yesCount={article.yes_count} noCount={article.no_count} dark />
         </div>
       ) : null}
 
@@ -226,6 +236,20 @@ export function OneAtATimeFeed({
           item.type === "article" ? (
             <div key={item.article.id} className="h-[100dvh] w-full snap-start">
               <OneCard article={item.article} active />
+            </div>
+          ) : item.type === "breather" ? (
+            <div
+              key={`breather-${item.count}`}
+              className="flex h-[100dvh] w-full snap-start flex-col items-center justify-center gap-4 bg-black px-8 text-center"
+            >
+              <span className="grid h-14 w-14 place-items-center rounded-full border border-white/20 bg-white/5 text-white/80">
+                <Coffee className="h-6 w-6" />
+              </span>
+              <h2 className="font-display text-2xl text-white uppercase">You're all caught up</h2>
+              <p className="max-w-xs text-sm text-white/60">
+                That's {item.count} of today's headlines. Take a breather — or keep swiping if
+                there's more you want to see.
+              </p>
             </div>
           ) : (
             <div
