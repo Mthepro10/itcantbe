@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useReaction, bumpStreak, resetStreak } from "@/hooks/use-reactions";
 import { ShareButton } from "@/components/news/ShareButton";
 import { AdCard } from "@/components/news/AdCard";
+import { SourcePickerDialog } from "@/components/news/SourcePickerDialog";
 import { PredictionVote } from "@/components/game/PredictionVote";
 import { trackLike, trackRead } from "@/lib/gamification";
 import type { Article } from "@/lib/news.functions";
@@ -53,6 +54,13 @@ function OneCard({ article, active }: { article: Article; active: boolean }) {
   const [broken, setBroken] = useState(false);
   const src = !broken && article.image_url ? article.image_url : placeholder;
   const { reaction, like, dislike } = useReaction(article.id);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const sources =
+    article.sources && article.sources.length > 0
+      ? article.sources
+      : [{ name: article.source_name ?? "Source", url: article.url }];
+  const hasMultipleSources = sources.length > 1;
 
   return (
     <div className="relative flex h-full w-full flex-col justify-end overflow-hidden bg-black">
@@ -70,7 +78,13 @@ function OneCard({ article, active }: { article: Article; active: boolean }) {
         href={article.url}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => trackRead()}
+        onClick={(e) => {
+          trackRead();
+          if (hasMultipleSources) {
+            e.preventDefault();
+            setPickerOpen(true);
+          }
+        }}
         className="relative z-10 flex flex-col gap-3 p-5 pr-20 pb-24 sm:pr-24 sm:pb-10"
       >
         <span
@@ -98,8 +112,20 @@ function OneCard({ article, active }: { article: Article; active: boolean }) {
           <span className="font-bold text-white/90">{article.source_name ?? "Source"}</span>
           <span aria-hidden>•</span>
           <span>{relativeTime(article.published_at)}</span>
+          {hasMultipleSources ? (
+            <span className="rounded-full border border-accent/50 bg-accent/15 px-2 py-0.5 text-[0.6rem] font-bold text-accent normal-case">
+              +{sources.length - 1} more sources
+            </span>
+          ) : null}
         </div>
       </a>
+
+      <SourcePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        title={article.title}
+        sources={sources}
+      />
 
       {article.category === "rumor" ? (
         <div className="relative z-10 -mt-16 px-5 pr-20 pb-24 sm:-mt-4 sm:pr-24 sm:pb-10">
