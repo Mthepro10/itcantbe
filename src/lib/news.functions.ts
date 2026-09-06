@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestIP } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 
 export const PAGE_SIZE = 20;
@@ -171,13 +173,26 @@ export const castVote = createServerFn({ method: "POST" })
     const supabase = getReadClient();
     if (!supabase) return { yesCount: 0, noCount: 0, error: MISSING_CONFIG };
 
-    const { data: rows, error } = await supabase.rpc("cast_vote", {
+    // Rate limit: one vote per article per IP. The IP is hashed (never
+    // stored raw) with a secret salt so it can't be reversed from the DB.
+    const ip = getRequestIP({ xForwardedFor: true }) ?? "unknown";
+    const salt = process.env["VOTE_HASH_SALT"] ?? "itcantbe-fallback-salt";
+    const ipHash = createHash("sha256").update(`${salt}:${ip}`).digest("hex");
+
+    const { data: rows, error } = await supabase.rpc("cast_vote_limited", {
       p_article_id: data.articleId,
       p_choice: data.choice,
+      p_ip_hash: ipHash,
     });
 
-    if (error || !rows || rows.length === 0) {
-      console.error("castVote failed", error?.message);
+    if (error) {
+      if (error.message?.includes("already_voted")) {
+        return { yesCount: 0, noCount: 0, error: "You've already voted on this one." };
+      }
+      console.error("castVote failed", error.message);
+      return { yesCount: 0, noCount: 0, error: "Couldn't record your vote right now." };
+    }
+    if (!rows || rows.length === 0) {
       return { yesCount: 0, noCount: 0, error: "Couldn't record your vote right now." };
     }
 
@@ -304,3 +319,120 @@ export const getTrendingClubs = createServerFn({ method: "GET" }).handler(
     return { clubs, error: null };
   },
 );
+
+const pageViewInput = z.object({
+  path: z.string().max(300),
+  referrer: z.string().max(500).optional(),
+});
+
+export const logPageView = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => pageViewInput.parse(input))
+  .handler(async ({ data }): Promise<{ ok: boolean }> => {
+    const supabase = getReadClient();
+    if (!supabase) return { ok: false };
+
+    const { error } = await supabase
+      .from("page_views")
+      .insert({ path: data.path, referrer: data.referrer ?? null });
+
+    if (error) {
+      console.error("logPageView failed", error.message);
+      return { ok: false };
+    }
+    return { ok: true };
+  });
+
+const pushSubInput = z.object({
+  endpoint: z.string(),
+  p256dh: z.string(),
+  auth: z.string(),
+});
+
+export const savePushSubscription = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => pushSubInput.parse(input))
+  .handler(async ({ data }): Promise<{ ok: boolean }> => {
+    const supabase = getReadClient();
+    if (!supabase) return { ok: false };
+
+    const { error } = await supabase
+      .from("push_subscriptions")
+      .upsert(
+        { endpoint: data.endpoint, p256dh: data.p256dh, auth: data.auth },
+        { onConflict: "endpoint" },
+      );
+
+    if (error) {
+      console.error("savePushSubscription failed", error.message);
+      return { ok: false };
+    }
+    return { ok: true };
+  });
+
+const articleByIdInput = z.object({ id: z.string() });
+
+export const getArticleById = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => articleByIdInput.parse(input))
+  .handler(async ({ data }): Promise<{ article: Article | null; error: string | null }> => {
+    const supabase = getReadClient();
+    if (!supabase) return { article: null, error: MISSING_CONFIG };
+
+    const { data: row, error } = await supabase
+      .from("articles")
+      .select(
+        sel(
+          "id, title, summary, url, image_url, source_name, published_at, league_id, club_ids, category, tag, sources",
+        ),
+      )
+      .eq("id", data.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("getArticleById failed", error.message);
+      return { article: null, error: "Couldn't load that story." };
+    }
+    return { article: (row as Article) ?? null, error: null };
+  });
+
+const clubPageInput = z.object({ clubId: z.string() });
+
+export interface ClubPage {
+  club: Club | null;
+  articles: Article[];
+  error: string | null;
+}
+
+export const getClubPage = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => clubPageInput.parse(input))
+  .handler(async ({ data }): Promise<ClubPage> => {
+    const supabase = getReadClient();
+    if (!supabase) return { club: null, articles: [], error: MISSING_CONFIG };
+
+    const [clubRes, articlesRes] = await Promise.all([
+      supabase
+        .from("clubs")
+        .select(sel("id, name, league_id, country, color_primary, color_secondary"))
+        .eq("id", data.clubId)
+        .maybeSingle(),
+      supabase
+        .from("articles")
+        .select(
+          sel(
+            "id, title, summary, url, image_url, source_name, published_at, league_id, club_ids, category, tag, sources",
+          ),
+        )
+        .contains("club_ids", [data.clubId])
+        .order("published_at", { ascending: false })
+        .limit(50),
+    ]);
+
+    if (clubRes.error || articlesRes.error) {
+      console.error("getClubPage failed", clubRes.error?.message ?? articlesRes.error?.message);
+      return { club: null, articles: [], error: "Couldn't load this team's page." };
+    }
+
+    return {
+      club: (clubRes.data as Club) ?? null,
+      articles: (articlesRes.data as Article[]) ?? [],
+      error: null,
+    };
+  });
