@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { infiniteQueryOptions, queryOptions, useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { FilterBar, type CategoryValue } from "@/components/news/FilterBar";
 import { SearchBar } from "@/components/news/SearchBar";
 import { StreakBadge } from "@/components/news/StreakBadge";
 import { TrendingTicker } from "@/components/news/TrendingTicker";
+import { PushOptIn } from "@/components/news/PushOptIn";
 import { LevelHud } from "@/components/game/LevelHud";
 import { getFilterOptions, listArticles, PAGE_SIZE } from "@/lib/news.functions";
 import { cn } from "@/lib/utils";
@@ -209,11 +210,15 @@ function Feed() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <LevelHud />
+              <PushOptIn />
               {ViewToggle}
             </div>
           </div>
           <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
-            It can't be, but is <span className="text-foreground">IT!!??</span>
+            It can't be, but is <span className="text-foreground">IT!!??</span>{" "}
+            <Link to="/about" className="underline hover:text-accent">
+              About this site
+            </Link>
           </p>
         </div>
       </header>
