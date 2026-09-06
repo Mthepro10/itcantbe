@@ -4,12 +4,14 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import { GameCelebrations } from "@/components/game/GameCelebrations";
+import { logPageView } from "@/lib/news.functions";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -88,16 +90,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "ItCantBe — Live Football Transfer News" },
-      {
-        name: "twitter:description",
-        content: "Breaking football transfer news, confirmed deals and rumors, straight from the source.",
-      },
+      { name: "twitter:description", content: "Breaking football transfer news, confirmed deals and rumors, straight from the source." },
+      { name: "theme-color", content: "#C2410C" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "manifest", href: "/manifest.json" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -128,14 +129,40 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function PageViewLogger() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    logPageView({
+      data: {
+        path: pathname,
+        referrer: typeof document !== "undefined" ? document.referrer || undefined : undefined,
+      },
+    }).catch(() => {
+      /* analytics is best-effort — never block the page on it */
+    });
+  }, [pathname]);
+
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {
+        /* registration failing shouldn't break the app */
+      });
+    }
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <GameCelebrations />
+      <PageViewLogger />
     </QueryClientProvider>
   );
 }
