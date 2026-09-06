@@ -1,0 +1,13 @@
+{
+  "name": "ItCantBe — Football Transfer News",
+  "short_name": "ItCantBe",
+  "description": "Breaking football transfer news, confirmed deals and rumors, straight from the source.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#262626",
+  "theme_color": "#C2410C",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
