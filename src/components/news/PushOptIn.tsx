@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { savePushSubscription } from "@/lib/news.functions";
 
@@ -15,12 +15,41 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
-type Status = "idle" | "loading" | "on" | "unsupported" | "denied";
+type Status = "idle" | "checking" | "loading" | "on" | "unsupported" | "denied";
 
 export function PushOptIn() {
   const supported =
     typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
-  const [status, setStatus] = useState<Status>(supported ? "idle" : "unsupported");
+  const [status, setStatus] = useState<Status>(supported ? "checking" : "unsupported");
+
+  // On mount, check whether this device already has an active subscription
+  // (e.g. after a reload) instead of always starting from scratch.
+  useEffect(() => {
+    if (!supported) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const existing = await reg?.pushManager.getSubscription();
+        if (!cancelled) {
+          if (existing) {
+            setStatus("on");
+          } else if (Notification.permission === "denied") {
+            setStatus("denied");
+          } else {
+            setStatus("idle");
+          }
+        }
+      } catch {
+        if (!cancelled) setStatus("idle");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supported]);
 
   const enable = async () => {
     setStatus("loading");
@@ -32,10 +61,13 @@ export function PushOptIn() {
         return;
       }
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
       const json = sub.toJSON();
 
       await savePushSubscription({
@@ -52,7 +84,7 @@ export function PushOptIn() {
     }
   };
 
-  if (status === "unsupported") return null;
+  if (status === "unsupported" || status === "checking") return null;
 
   const label =
     status === "on"
@@ -79,3 +111,4 @@ export function PushOptIn() {
     </button>
   );
 }
+
