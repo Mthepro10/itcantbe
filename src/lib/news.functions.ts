@@ -60,7 +60,7 @@ export interface FilterOptions {
 /** Keeps select strings out of the type-level parser (build perf). */
 const sel = (s: string): string => s;
 
-function getReadClient() {
+export function getReadClient() {
   const url = process.env["TRANSFER_DB_URL"];
   const key = process.env["TRANSFER_DB_ANON_KEY"];
   if (!url || !key) return null;
@@ -458,4 +458,6 @@ export const submitFeedback = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+
 
