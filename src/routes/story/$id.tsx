@@ -62,8 +62,30 @@ function StoryPage() {
       ? article.sources
       : [{ name: article.source_name ?? "Source", url: article.url }];
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    headline: article.title,
+    description: article.summary ?? article.title,
+    datePublished: article.published_at,
+    ...(article.image_url ? { image: [article.image_url] } : {}),
+    publisher: { "@type": "Organization", name: "ItCantBe" },
+    ...(sources[0]
+      ? {
+          isBasedOn: sources.map((s) => ({ "@type": "NewsArticle", url: s.url, publisher: { "@type": "Organization", name: s.name } })),
+        }
+      : {}),
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        // JSON.stringify alone doesn't escape "<", which would let a title
+        // containing "</script>" break out of this tag — titles come from
+        // external RSS feeds, so this escaping matters here.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       <div className="mx-auto max-w-2xl px-4 py-8">
         <Link to="/" className="text-sm font-bold text-muted-foreground hover:text-accent">
           ← Back to the feed
@@ -109,3 +131,4 @@ function StoryPage() {
     </div>
   );
 }
+
