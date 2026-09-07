@@ -461,3 +461,67 @@ export const submitFeedback = createServerFn({ method: "POST" })
 
 
 
+
+export interface StoryClub {
+  id: string;
+  name: string;
+  color_primary: string | null;
+  color_secondary: string | null;
+  count: number;
+}
+
+export const getStoryClubs = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ clubs: StoryClub[]; error: string | null }> => {
+    const supabase = getReadClient();
+    if (!supabase) return { clubs: [], error: MISSING_CONFIG };
+
+    const cutoff = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { data: rows, error } = await supabase
+      .from("articles")
+      .select("club_ids")
+      .gte("published_at", cutoff)
+      .not("club_ids", "is", null)
+      .limit(400);
+
+    if (error) {
+      console.error("getStoryClubs failed", error.message);
+      return { clubs: [], error: "Couldn't load stories." };
+    }
+
+    const tally = new Map<string, number>();
+    for (const row of rows ?? []) {
+      for (const id of (row.club_ids as string[]) ?? []) {
+        tally.set(id, (tally.get(id) ?? 0) + 1);
+      }
+    }
+
+    const topIds = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
+    if (topIds.length === 0) return { clubs: [], error: null };
+
+    const { data: clubRows } = await supabase
+      .from("clubs")
+      .select("id, name, color_primary, color_secondary")
+      .in(
+        "id",
+        topIds.map(([id]) => id),
+      );
+
+    const clubMap = new Map((clubRows ?? []).map((c) => [c.id as string, c]));
+    const clubs = topIds
+      .map(([id, count]) => {
+        const c = clubMap.get(id);
+        if (!c) return null;
+        return {
+          id,
+          name: c.name as string,
+          color_primary: c.color_primary as string | null,
+          color_secondary: c.color_secondary as string | null,
+          count,
+        };
+      })
+      .filter((c): c is StoryClub => c !== null);
+
+    return { clubs, error: null };
+  },
+);
+
