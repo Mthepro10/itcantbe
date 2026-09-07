@@ -1,28 +1,46 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrediction } from "@/hooks/use-gamification";
 import { trackPrediction } from "@/lib/gamification";
+import { castVote } from "@/lib/news.functions";
 
 /**
  * "Will it happen?" mini-game shown on rumor cards. One vote per article,
- * stored locally. After voting we reveal a stable, per-article community
- * split so it feels alive without a backend.
+ * remembered locally so you can't vote twice — but the split you see is a
+ * REAL aggregate from every fan who has voted, stored anonymously in the
+ * database (no account needed). No hashing, no fake numbers.
  */
-export function PredictionVote({ id, dark = false }: { id: string; dark?: boolean }) {
+export function PredictionVote({
+  id,
+  yesCount = 0,
+  noCount = 0,
+  dark = false,
+}: {
+  id: string;
+  yesCount?: number;
+  noCount?: number;
+  dark?: boolean;
+}) {
   const { vote, cast } = usePrediction(id);
+  const [counts, setCounts] = useState({ yes: yesCount, no: noCount });
 
-  // Deterministic community split derived from the article id.
-  const yesPct = useMemo(() => {
-    let h = 0;
-    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-    return 35 + (h % 45); // 35–79% say yes
-  }, [id]);
+  const total = counts.yes + counts.no;
+  const yesPct = total > 0 ? Math.round((counts.yes / total) * 100) : 50;
 
   const onVote = (choice: "yes" | "no") => {
     if (vote) return;
     cast(choice);
     trackPrediction();
+    // Optimistic bump so it feels instant, reconciled below with the real total.
+    setCounts((c) => ({ ...c, [choice]: c[choice] + 1 }));
+    castVote({ data: { articleId: id, choice } })
+      .then((res) => {
+        if (!res.error) setCounts({ yes: res.yesCount, no: res.noCount });
+      })
+      .catch(() => {
+        /* keep the optimistic value if the network call fails */
+      });
   };
 
   if (vote) {
@@ -37,11 +55,18 @@ export function PredictionVote({ id, dark = false }: { id: string; dark?: boolea
           </span>
         </div>
         <div className={cn("flex h-2 overflow-hidden rounded-full", dark ? "bg-white/15" : "bg-border")}>
-          <span className="h-full bg-accent" style={{ width: `${yesPct}%` }} />
-          <span className="h-full bg-chart-2" style={{ width: `${100 - yesPct}%` }} />
+          <span
+            className="h-full bg-accent transition-[width] duration-500"
+            style={{ width: `${yesPct}%` }}
+          />
+          <span
+            className="h-full bg-chart-2 transition-[width] duration-500"
+            style={{ width: `${100 - yesPct}%` }}
+          />
         </div>
         <span className={cn("text-[0.65rem]", dark ? "text-white/60" : "text-muted-foreground")}>
-          You voted {vote === "yes" ? "it happens" : "no chance"} · +12 XP
+          {total.toLocaleString()} fans voted · you said{" "}
+          {vote === "yes" ? "it happens" : "no chance"} · +12 XP
         </span>
       </div>
     );
@@ -55,7 +80,7 @@ export function PredictionVote({ id, dark = false }: { id: string; dark?: boolea
           dark ? "text-white/70" : "text-muted-foreground",
         )}
       >
-        Will it happen?
+        Will it happen?{total > 0 ? ` · ${total.toLocaleString()} votes so far` : ""}
       </span>
       <div className="flex gap-2">
         <button
@@ -82,3 +107,4 @@ export function PredictionVote({ id, dark = false }: { id: string; dark?: boolea
     </div>
   );
 }
+
