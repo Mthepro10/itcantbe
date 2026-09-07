@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { infiniteQueryOptions, queryOptions, useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -11,6 +11,8 @@ import { SearchBar } from "@/components/news/SearchBar";
 import { StreakBadge } from "@/components/news/StreakBadge";
 import { TrendingTicker } from "@/components/news/TrendingTicker";
 import { PushOptIn } from "@/components/news/PushOptIn";
+import { StoryCircles } from "@/components/news/StoryCircles";
+import { StoryViewer } from "@/components/news/StoryViewer";
 import { LevelHud } from "@/components/game/LevelHud";
 import { getFilterOptions, listArticles, PAGE_SIZE } from "@/lib/news.functions";
 import { cn } from "@/lib/utils";
@@ -139,6 +141,7 @@ function Feed() {
       .filter((c) => c.color_primary)
       .map((c) => [c.id, { primary: c.color_primary!, secondary: c.color_secondary ?? c.color_primary! }]),
   );
+  const [storyClubId, setStoryClubId] = useState<string | null>(null);
 
   const setSearch = (next: Partial<FeedSearch>) =>
     navigate({ to: ".", search: (prev) => ({ ...prev, ...next }) });
@@ -222,6 +225,8 @@ function Feed() {
           </p>
         </div>
       </header>
+
+      <StoryCircles onSelect={setStoryClubId} />
 
       <div className="border-b border-border bg-background/90">
         <div className="mx-auto max-w-6xl px-4 py-3">
@@ -309,7 +314,13 @@ function Feed() {
       <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
         Headlines and images link back to their original sources. We only ever quote the wire.
       </footer>
+
+      {storyClubId ? (
+        <StoryViewer clubId={storyClubId} onClose={() => setStoryClubId(null)} />
+      ) : null}
     </div>
   );
 }
+
+
 
