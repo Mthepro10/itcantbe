@@ -178,9 +178,9 @@ function Feed() {
   if (view === "1atatime") {
     return (
       <div className="relative min-h-screen bg-black">
-        <div className="absolute top-3 left-1/2 z-30 -translate-x-1/2">{ViewToggle}</div>
-        <div className="absolute top-3 left-3 z-30">
+        <div className="absolute inset-x-0 top-0 z-30 flex flex-wrap items-center justify-between gap-2 p-3">
           <LevelHud />
+          {ViewToggle}
         </div>
         <OneAtATimeFeed
           articles={articles}
@@ -312,3 +312,4 @@ function Feed() {
     </div>
   );
 }
+
