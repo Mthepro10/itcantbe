@@ -436,3 +436,26 @@ export const getClubPage = createServerFn({ method: "GET" })
       error: null,
     };
   });
+
+const feedbackInput = z.object({
+  message: z.string().min(1).max(2000),
+  contact: z.string().max(200).optional(),
+});
+
+export const submitFeedback = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => feedbackInput.parse(input))
+  .handler(async ({ data }): Promise<{ ok: boolean }> => {
+    const supabase = getReadClient();
+    if (!supabase) return { ok: false };
+
+    const { error } = await supabase
+      .from("feedback")
+      .insert({ message: data.message, contact: data.contact ?? null });
+
+    if (error) {
+      console.error("submitFeedback failed", error.message);
+      return { ok: false };
+    }
+    return { ok: true };
+  });
+
